@@ -3,6 +3,7 @@ const mysql = require("mysql2");
 const inquirer = require("inquirer");
 const Choice = require("inquirer/lib/objects/choice");
 const { response } = require("express");
+const e = require("express");
 require("dotenv").config();
 //console.log(process.env);
 
@@ -88,7 +89,20 @@ function viewRoles() {
   });
 }
 
-function viewEmployees() {}
+function viewEmployees() {
+  const employee = `SELECT employee.id, employee.first_name, employee.last_name, roles.title, roles.salary, department.dept_name, employee.manager_id 
+  FROM employee
+  LEFT JOIN roles ON employee.roles_id = roles.id
+  LEFT JOIN department ON department.id = roles.department_id`;
+
+  connection.query(employee, (err, rows) => {
+    if (err) {
+      throw err;
+    }
+    console.table(rows);
+    startingPrompt();
+  });
+}
 
 function addDepartment() {
   inquirer
@@ -166,19 +180,87 @@ async function addRole() {
           }
         });
     });
-
-  //  const insertEmployee = `INSERT INTO`
-  //  const insertDepartment = `INSERT INTO`
-
-  // connection.query(insertRole, (err, rows) => {
-  //   if (err) {
-  //     throw err;
-  //   }
-  //   console.table(rows);
-  //   startingPrompt();
-  // });
 }
 
-function addEmployee() {}
+async function addEmployee() {
+  var [role] = await connection.promise().query("SELECT * FROM roles");
+  var rolesArray = role.map(({ id, title }) => ({
+    name: title,
+    value: id,
+  }));
+  console.log(rolesArray);
 
-function UpdateEmployee() {}
+  inquirer
+    .prompt([
+      {
+        type: "input",
+        name: "firstName",
+        message: "What is the first name of the employee?",
+      },
+      {
+        type: "input",
+        name: "lastName",
+        message: "What is the last name of the employee?",
+      },
+      {
+        type: "list",
+        name: "role",
+        message: "Please select the role of the new employee",
+        choices: rolesArray,
+      },
+      {
+        type: "input",
+        name: "manager",
+        message: "Who is the manager of the employee?",
+      },
+    ])
+    .then(function (answers) {
+      var employeeObject = {
+        first_name: answers.firstName,
+        last_name: answers.lastName,
+        roles_id: answers.role,
+      };
+      const insertEmployee = `INSERT INTO employee SET ?`;
+      connection
+        .promise()
+        .query(insertEmployee, employeeObject)
+        .then(([response]) => {
+          if (response.affectedRows > 0) {
+            viewEmployees();
+          } else {
+            console.info("failed to add to database");
+            startingPrompt();
+          }
+        });
+    });
+}
+
+async function UpdateEmployee() {
+  var [roles] = await connection.promise().query("SELECT * FROM roles");
+  var rolesArray = roles.map(({ id, title }) => ({
+    name: title,
+    value: id,
+  }));
+  console.log(rolesArray);
+  var [employee] = await connection.promise().query("SELECT * FROM employee");
+  var employeeArray = employee.map(({ first_name, last_name, id }) => ({
+    firstName: first_name,
+    lastName: last_name,
+    value: id,
+  }));
+  console.log(employeeArray);
+  inquirer.prompt([
+    {
+      type: "list",
+      name: "employees",
+      message: "Select the employee you would like to update",
+      choices: employeeArray,
+    },
+    {
+      type: "list",
+      name: "roles",
+      message: "Select the new employee role",
+      choices: rolesArray,
+    },
+  ]);
+}
