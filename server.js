@@ -2,6 +2,7 @@
 const mysql = require("mysql2");
 const inquirer = require("inquirer");
 const Choice = require("inquirer/lib/objects/choice");
+const { response } = require("express");
 require("dotenv").config();
 //console.log(process.env);
 
@@ -43,8 +44,8 @@ const startingPrompt = () => {
         case "View all employees":
           viewEmployees();
           break;
-        case "View a department":
-          viewSingleDepartment();
+        case "Add a department":
+          addDepartment();
           break;
         case "Add a role":
           addRole();
@@ -72,3 +73,112 @@ function viewDepartments() {
     startingPrompt();
   });
 }
+
+function viewRoles() {
+  const roles = `SELECT roles.*, department.dept_name
+  FROM roles 
+  LEFT JOIN department ON roles.department_id = department.id `;
+
+  connection.query(roles, (err, rows) => {
+    if (err) {
+      throw err;
+    }
+    console.table(rows);
+    startingPrompt();
+  });
+}
+
+function viewEmployees() {}
+
+function addDepartment() {
+  inquirer
+    .prompt([
+      {
+        type: "input",
+        name: "departmentName",
+        message: "Please enter the name of the new department",
+      },
+    ])
+    .then(function (answer) {
+      //console.log(answer);
+      const deptObject = {
+        dept_name: answer.departmentName,
+      };
+      const insertDepartment = `INSERT INTO department SET ?`;
+      connection
+        .promise()
+        .query(insertDepartment, deptObject)
+        .then(([response]) => {
+          if (response.affectedRows > 0) {
+            viewDepartments();
+          } else {
+            console.info("failed to add to databse");
+            startingPrompt();
+          }
+        });
+    });
+}
+
+async function addRole() {
+  var [departments] = await connection
+    .promise()
+    .query("SELECT * FROM department");
+  var departmentArray = departments.map(({ id, dept_name }) => ({
+    name: dept_name,
+    value: id,
+  }));
+  // console.log(departmentArray);
+  inquirer
+    .prompt([
+      {
+        type: "input",
+        name: "title",
+        message: "What is the title of the new role?",
+      },
+      {
+        type: "input",
+        name: "salary",
+        message: "What is the salary of the new role?",
+      },
+      {
+        type: "list",
+        name: "department",
+        message: "Please select the department for the new role?",
+        choices: departmentArray,
+      },
+    ])
+    .then(function (answers) {
+      var roleObject = {
+        title: answers.title,
+        salary: answers.salary,
+        department_id: answers.department,
+      };
+      const insertRole = `INSERT INTO roles SET ?`;
+      connection
+        .promise()
+        .query(insertRole, roleObject)
+        .then(([response]) => {
+          if (response.affectedRows > 0) {
+            viewRoles();
+          } else {
+            console.info("failed to add to database");
+            startingPrompt();
+          }
+        });
+    });
+
+  //  const insertEmployee = `INSERT INTO`
+  //  const insertDepartment = `INSERT INTO`
+
+  // connection.query(insertRole, (err, rows) => {
+  //   if (err) {
+  //     throw err;
+  //   }
+  //   console.table(rows);
+  //   startingPrompt();
+  // });
+}
+
+function addEmployee() {}
+
+function UpdateEmployee() {}
