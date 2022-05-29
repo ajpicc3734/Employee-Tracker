@@ -10,10 +10,10 @@ Run npm start in the root directory of the application
 
 ## Built With
 
-JavaScript
-node.js
-inquirer.js
-Node MySQL 2
+- JavaScript
+- node.js
+- inquirer.js
+- Node MySQL 2
 
 ## Video Walkthrough
 
