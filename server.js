@@ -1,11 +1,9 @@
-//const express = require("express");
 const mysql = require("mysql2");
 const inquirer = require("inquirer");
 const Choice = require("inquirer/lib/objects/choice");
 const { response } = require("express");
 const e = require("express");
 require("dotenv").config();
-//console.log(process.env);
 
 //create connect ot database
 const connection = mysql.createConnection({
@@ -30,7 +28,7 @@ const startingPrompt = () => {
           "Add a department",
           "Add a role",
           "Add an employee",
-          "Update an employee role",
+          "Update an employee",
         ],
       },
     ])
@@ -55,8 +53,10 @@ const startingPrompt = () => {
           addEmployee();
           break;
         case "Update an employee":
-          UpdateEmployee();
+          updateEmployee();
           break;
+        default:
+          console.log("Sorry, unknown request");
       }
     });
 };
@@ -114,7 +114,6 @@ function addDepartment() {
       },
     ])
     .then(function (answer) {
-      //console.log(answer);
       const deptObject = {
         dept_name: answer.departmentName,
       };
@@ -141,7 +140,7 @@ async function addRole() {
     name: dept_name,
     value: id,
   }));
-  // console.log(departmentArray);
+
   inquirer
     .prompt([
       {
@@ -188,7 +187,6 @@ async function addEmployee() {
     name: title,
     value: id,
   }));
-  console.log(rolesArray);
 
   inquirer
     .prompt([
@@ -235,32 +233,46 @@ async function addEmployee() {
     });
 }
 
-async function UpdateEmployee() {
-  var [roles] = await connection.promise().query("SELECT * FROM roles");
-  var rolesArray = roles.map(({ id, title }) => ({
+async function updateEmployee() {
+  var [employee] = await connection.promise().query("SELECT * FROM employee");
+  var employeeArray = employee.map(({ first_name, id }) => ({
+    name: first_name,
+    value: id,
+  }));
+
+  var [role] = await connection.promise().query("SELECT * FROM roles");
+  var roleArray = role.map(({ id, title }) => ({
     name: title,
     value: id,
   }));
-  console.log(rolesArray);
-  var [employee] = await connection.promise().query("SELECT * FROM employee");
-  var employeeArray = employee.map(({ first_name, last_name, id }) => ({
-    firstName: first_name,
-    lastName: last_name,
-    value: id,
-  }));
-  console.log(employeeArray);
-  inquirer.prompt([
-    {
-      type: "list",
-      name: "employees",
-      message: "Select the employee you would like to update",
-      choices: employeeArray,
-    },
-    {
-      type: "list",
-      name: "roles",
-      message: "Select the new employee role",
-      choices: rolesArray,
-    },
-  ]);
+
+  inquirer
+    .prompt([
+      {
+        type: "list",
+        name: "roles",
+        message: "Select the new employee role",
+        choices: roleArray,
+      },
+      {
+        type: "list",
+        name: "employees",
+        message: "Select the employee you would like to update",
+        choices: employeeArray,
+      },
+    ])
+    .then(function (answers) {
+      var query = `UPDATE employee SET roles_id = ? WHERE id = ?`;
+      connection.query(
+        query,
+        [answers.roles, answers.employees],
+        function (err, res) {
+          if (res.affectedRows > 0) {
+            viewEmployees();
+          } else {
+            throw err;
+          }
+        }
+      );
+    });
 }
